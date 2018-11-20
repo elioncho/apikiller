@@ -21,7 +21,9 @@ def call
     1.upto(@execution.rps) do |i|
       request = Request.new(@requests.sample['request'])
       multi.add i.to_s.to_sym, EventMachine::HttpRequest.new(request.url)
-                                                        .send(request.method)
+                                                        .send(request.method,
+                                                              head: request.headers,
+                                                              body: request.body)
     end
   
     multi.callback do
