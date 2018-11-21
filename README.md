@@ -1,9 +1,23 @@
 # Apimeter Worker
 
 ## Requirements
+
 - Set database_url .env variable
 
-## Running
+## Building
+
+```bash
+$ bin/setup
 ```
-ruby index.rb <execution_id>
+
+## Buildig for production
+
+```bash
+$ docker build --target PRODUCTION -t apimeter/worker .
+```
+
+## Running
+
+```bash
+$ docker-compose run --rm <execution_id>
 ```

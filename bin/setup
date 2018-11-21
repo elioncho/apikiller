@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if ! hash docker-compose 2>/dev/null; then
+  echo "== ERROR =="
+  echo "docker-compose not found"
+  exit 1
+fi
+
+echo "== Check environment file =="
+if [ ! -f .env ]; then
+  cp -v .env.example .env
+fi
+
+echo "== Building base Docker image =="
+docker-compose stop app
+docker-compose rm -f app
+docker-compose build
+
+echo "== Installing dependencies =="
+docker-compose run --entrypoint="bundle install" --rm app

@@ -36,6 +36,7 @@ GEM
     i18n (1.0.1)
       concurrent-ruby (~> 1.0)
     minitest (5.11.3)
+    pg (1.1.3)
     public_suffix (3.0.2)
     raabro (1.1.6)
     rufus-scheduler (3.5.2)
@@ -43,6 +44,8 @@ GEM
     thread_safe (0.3.6)
     tzinfo (1.2.5)
       thread_safe (~> 0.1)
+    tzinfo-data (1.2018.7)
+      tzinfo (>= 1.0.0)
 
 PLATFORMS
   ruby
@@ -51,7 +54,9 @@ DEPENDENCIES
   activerecord
   dotenv
   em-http-request
+  pg
   rufus-scheduler
+  tzinfo-data
 
 BUNDLED WITH
-   1.16.1
+   1.17.1

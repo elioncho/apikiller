@@ -1,9 +1,15 @@
-version: '3'
+version: "3.4"
 
 services:
   app:
-    build: .
-    ports: 
-      - '3000:3000'
+    build:
+      context: .
+      target: DEVELOPMENT
+    env_file:
+      - .env
     volumes:
-      - .:/usr/src/app/
+      - $PWD:/usr/src/app/
+      - gems:/usr/local/bundle/
+
+volumes:
+  gems: {}
