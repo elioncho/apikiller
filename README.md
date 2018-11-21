@@ -19,5 +19,5 @@ $ docker build --target PRODUCTION -t apimeter/worker .
 ## Running
 
 ```bash
-$ docker-compose run --rm <execution_id>
+$ docker-compose run --rm app <execution_id>
 ```
