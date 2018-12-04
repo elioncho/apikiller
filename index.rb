@@ -14,4 +14,8 @@ ActiveRecord::Base.establish_connection(ENV['DATABASE_URL'])
 execution_id = ARGV[0]
 @execution = Execution.find(execution_id)
 puts @execution.to_s
-@execution.start
+@execution.run
+@execution.result = @execution.result_hash
+@execution.save
+puts 'results'
+puts @execution.result
