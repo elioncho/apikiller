@@ -1,19 +1,16 @@
 class Execution < ActiveRecord::Base
+  attr_reader :execution_result
   belongs_to :collection
 
-  def result_hash
-    @result_hash ||= {}
-  end
-
   def run
-    seconds = 0
-    scheduler = Rufus::Scheduler.new
-    scheduler.every '1s' do
+    # seconds = 0
+    # scheduler = Rufus::Scheduler.new
+    # scheduler.every '1s' do
       do_requests
-      seconds += 1
-      scheduler.shutdown if seconds == execution_time
-    end
-    scheduler.join
+    #   seconds += 1
+    #   scheduler.shutdown if seconds == execution_time
+    # end
+    # scheduler.join
   end
 
   def to_s
@@ -22,57 +19,74 @@ class Execution < ActiveRecord::Base
 
   private
 
-  # TODO: move this elsewhwere
   def do_requests
     EventMachine.run do
       multi = EventMachine::MultiRequest.new
+      starting_time = Time.now
       requests_per_second.times do |i|
         request = Request.new(requests.sample['request'])
         multi.add i.to_s.to_sym,
                   EventMachine::HttpRequest.new(request.url)
-                                           .send(request.method,
-                                                 head: request.headers,
-                                                 body: request.body)
+                                          .send(request.method,
+                                                head: request.headers,
+                                                body: request.body)
       end
       multi.callback do
-        #puts multi.responses[:callback]
-        multi.responses[:callback].each do |_key, value|
-          uri         = "#{value.req.uri.host}#{value.req.uri.path}"
-          http_status = value.response_header.http_status.to_s
-          if result_hash.key?(uri)
-            hash = result_hash[uri].detect { |item| item.key?(http_status) }
-            if hash
-              hash[http_status] += 1
-            else
-              result_hash[uri] << { http_status => 1 }
-            end
-          else
-            result_hash[uri] = []
-            result_hash[uri] << { http_status => 1 }
-          end
-        end
-
-        multi.responses[:errback].each do |_key, value|
-          uri   = "#{value.req.uri.host}#{value.req.uri.path}"
-          error = value.error || 'error'
-          if result_hash.key?(uri)
-            hash = result_hash[uri].detect { |item| item.key?(error) }
-            if hash
-              hash[error] += 1
-            else
-              result_hash[uri] << { error => 1 }
-            end
-          else
-            result_hash[uri] = []
-            result_hash[uri] << { error => 1 }
-          end
-        end
+        @execution_result = ExecutionResult.batch(
+          multi.responses[:callback].merge(multi.responses[:errback])
+        )
         EventMachine.stop
+        # delta =  Time.now - starting_time
+        # next if delta > 1
+        # sleep(delta)
+        # do_requests
       end
     end
   end
 
   def requests
     JSON.parse(collection.data)
+  end
+
+  class ExecutionResult
+    attr_reader :result
+    def initialize
+      @result = {}
+    end
+
+    def self.batch(responses)
+      result_hash = new
+      responses.each do |_key, value|
+        response = ExecutionResponse.new(value)
+        result_hash.add(response)
+      end
+      result_hash
+    end
+
+    def add(response)
+      if result.key?(response.url)
+        object = result[response.url].detect { |item| item.key?(response.status) }
+        if object
+          object[response.status] += 1
+        else
+          result[response.url] << { response.status => 1 }
+        end
+      else
+        result[response.url] = [{ response.status => 1 }]
+      end
+    end
+  end
+
+  class ExecutionResponse
+    attr_reader :host, :path, :status
+    def initialize(response)
+      @host   = response.req.uri.host
+      @path   = response.req.uri.path
+      @status = response&.response_header&.status&.to_s || response&.error || 'error'
+    end
+
+    def url
+      "#{host}#{path}"
+    end
   end
 end

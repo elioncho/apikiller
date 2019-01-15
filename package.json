@@ -1,0 +1,29 @@
+{
+  "name": "apimeter_worker",
+  "version": "1.0.0",
+  "description": "## Requirements",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elioncho/apimeter_worker.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/elioncho/apimeter_worker/issues"
+  },
+  "homepage": "https://github.com/elioncho/apimeter_worker#readme",
+  "dependencies": {
+    "dotenv": "^6.2.0",
+    "interval-promise": "^1.3.0",
+    "npm": "^6.5.0",
+    "pg": "^7.8.0",
+    "pg-hstore": "^2.3.2",
+    "request": "^2.88.0",
+    "sequelize": "^4.42.0",
+    "util": "^0.11.1"
+  }
+}

@@ -15,7 +15,7 @@ execution_id = ARGV[0]
 @execution = Execution.find(execution_id)
 puts @execution.to_s
 @execution.run
-@execution.result = @execution.result_hash
+@execution.result = @execution.execution_result
 @execution.save
 puts 'results'
 puts @execution.result
