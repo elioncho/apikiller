@@ -1,11 +1,18 @@
 require('dotenv').config();
 
+const AWS = require('aws-sdk');
 const Sequelize = require('sequelize');
 const request = require('request');
 const util = require('util');
 const interval = require('interval-promise');
 
-const DATABASE_URL = process.env.DATABASE_URL;
+const { AWS_SECRET_KEY, AWS_ACCESS_KEY, AWS_REGION, AWS_TOPIC_ARN, DATABASE_URL } = process.env;
+
+const sns = new AWS.SNS({
+  accessKeyId: AWS_ACCESS_KEY,
+  secretAccessKey: AWS_SECRET_KEY,
+  region: AWS_REGION,
+});
 
 const sequelize = new Sequelize(DATABASE_URL, {
   dialect: 'postgres',
@@ -57,7 +64,9 @@ function doRequests(executionTime, requestsPerSecond, data) {
   const add = (response, options) => {
     const endpoint = result.find(o => o.url == options.url);
     if (endpoint) {
-      if (!response) endpoint.errors += 1;
+      if (!response) {
+        endpoint.errors += 1;
+      }
       else {
         const statusCode = endpoint.responses.find(o => o.status_code == response.statusCode);
         if (statusCode) {
@@ -138,6 +147,15 @@ Execution.findById(executionId).then(execution => {
     console.log('requests_per_second', requestsPerSecond);
     doRequests(executionTime, requestsPerSecond, data).then((result) => {
       console.log(util.inspect(result, { showHidden: false, depth: null }));
+      const params = {
+        Message: JSON.stringify(result),
+        TopicArn: AWS_TOPIC_ARN,
+        Subject: executionId.toString(),
+      };
+      sns.publish(params, (err, data) => {
+        if (err) console.log(err, err.stack);
+        else console.log(data);
+      });
     })
   });
 });
