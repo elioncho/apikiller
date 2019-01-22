@@ -81,15 +81,23 @@ function doRequests(executionTime, requestsPerSecond, data) {
         }
       }
     } else {
-      result.push({
-        url: options.url,
-        errors: 0,
-        responses: [{
-          status_code: response.statusCode,
-          number_of_requests: 1,
-          elapsed_time: response.elapsedTime,
-        }]
-      })
+      if (!response) {
+        result.push({
+          url: options.url,
+          errors: 1,
+          responses: []
+        })
+      } else {
+        result.push({
+          url: options.url,
+          errors: 0,
+          responses: [{
+            status_code: response.statusCode,
+            number_of_requests: 1,
+            elapsed_time: response.elapsedTime,
+          }]
+        })
+      }
     }
   }
   const requestParams = (endpoint) => {
