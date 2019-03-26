@@ -1,7 +1,7 @@
 {
   "name": "apimeter_worker",
   "version": "1.0.0",
-  "description": "## Requirements",
+  "description": "Do load tests to a Postman Collection endpoint",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,14 +17,11 @@
   },
   "homepage": "https://github.com/elioncho/apimeter_worker#readme",
   "dependencies": {
-    "aws-sdk": "^2.388.0",
     "dotenv": "^6.2.0",
-    "interval-promise": "^1.3.0",
+    "inquirer": "^6.2.2",
+    "lodash": "^4.17.11",
     "npm": "^6.5.0",
-    "pg": "^7.8.0",
-    "pg-hstore": "^2.3.2",
     "request": "^2.88.0",
-    "sequelize": "^4.42.0",
-    "util": "^0.11.1"
+    "request-promise": "^4.2.4"
   }
 }

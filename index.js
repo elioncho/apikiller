@@ -1,124 +1,57 @@
 require('dotenv').config();
 
-const AWS = require('aws-sdk');
-const Sequelize = require('sequelize');
+const _ = require('lodash');
+const inquirer = require('inquirer');
 const request = require('request');
-const util = require('util');
-const interval = require('interval-promise');
 
-const { AWS_SECRET_KEY, AWS_ACCESS_KEY, AWS_REGION, AWS_TOPIC_ARN, DATABASE_URL } = process.env;
+const Postman = require('./postman/index');
 
-const sns = new AWS.SNS({
-  accessKeyId: AWS_ACCESS_KEY,
-  secretAccessKey: AWS_SECRET_KEY,
-  region: AWS_REGION,
-});
+const { POSTMAN_API_KEY } = process.env;
 
-const sequelize = new Sequelize(DATABASE_URL, {
-  dialect: 'postgres',
-  dialectOptions: {
-    ssl: true,
-  }
-});
+const postmanClient = Postman(POSTMAN_API_KEY);
 
-const Collection = sequelize.define('collections', {
-  id: {
-    primaryKey: true, 
-    type: Sequelize.BIGINT,
-  },
-  data: {
-    type: Sequelize.JSONB,
-  }
-}, {
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
-}
-);
-
-const Execution = sequelize.define('executions', {
-    id: {
-      primaryKey: true, 
-      type: Sequelize.BIGINT
-    },
-    collection_id: {
-      type: Sequelize.BIGINT,
-    },
-    execution_time: {
-      type: Sequelize.INTEGER
-    },
-    requests_per_second: {
-      type: Sequelize.INTEGER
-    },
-    result: {
-      type: Sequelize.JSONB
-    }
-  }, {
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-  }
-);
-
-function doRequests(executionTime, requestsPerSecond, data) {
-  const result = [];
+function doRequests(executionTime, requestsPerSecond, endpointData) {
+  const result = {
+    executionTime: executionTime,
+    requestsPerSecond: requestsPerSecond,
+    totalNumberOfRequests: executionTime * requestsPerSecond,
+    responses: [],
+    errors: 0
+  };
   let number_of_intervals = 0;
   const add = (response, options) => {
-    const endpoint = result.find(o => o.url == options.url);
-    if (endpoint) {
-      if (!response) {
-        endpoint.errors += 1;
-      }
-      else {
-        const statusCode = endpoint.responses.find(o => o.status_code == response.statusCode);
-        if (statusCode) {
-          statusCode.number_of_requests += 1;
-          statusCode.elapsed_time += response.elapsedTime;
-        } else {
-          result[url].responses.push({
-            status_code: response.statusCode,
-            number_of_requests: 1,
-            elapsed_time: response.elapsedTime,
-          });
-        }
-      }
-    } else {
-      if (!response) {
-        result.push({
-          url: options.url,
-          errors: 1,
-          responses: []
+    if (response) {
+      const savedResponse = _.find(result.responses, (element) => { 
+        return element.statusCode == element.statusCode;
+      });
+      if (_.isEmpty(savedResponse)) {
+        result.responses.push({
+          statusCode: response.statusCode,
+          numberOfResponses: 1,
         })
       } else {
-        result.push({
-          url: options.url,
-          errors: 0,
-          responses: [{
-            status_code: response.statusCode,
-            number_of_requests: 1,
-            elapsed_time: response.elapsedTime,
-          }]
-        })
+        savedResponse.numberOfResponses += 1;
       }
+    } else {
+      result.errors += 1;
     }
   }
-  const requestParams = (endpoint) => {
-    return {
-      url: endpoint.request.url.raw,
-      method: endpoint.request.method,
-      headers: endpoint.request.header,
-      body: endpoint.request.body,
-      json: true,
-      time: true,
-      timeout: 5000,
-    };
-  }
+  const requestParams = (endpointData) => ({
+    url: endpointData.request.url.raw,
+    method: endpointData.request.method,
+    headers: endpointData.request.header,
+    body: endpointData.request.body,
+    json: true,
+    time: true,
+    timeout: 5000,
+  })
   const start = () => {
     return new Promise((resolve, reject) => {
-      const requestPromises = []
+      const requestPromises = [];
       for (let i = 0; i < requestsPerSecond; i++) {
         requestPromises.push(
           new Promise((resolve, reject) => {
-            const endpoint = data[Math.floor(Math.random() * data.length)];
-            const options = requestParams(endpoint);
+            const options = requestParams(endpointData);
             request(options, function(error, response, body) {
               add(response, options);
               resolve();
@@ -143,27 +76,53 @@ function doRequests(executionTime, requestsPerSecond, data) {
   })
 }
 
-const executionId = parseInt(process.argv.slice(2));
-
-Execution.findById(executionId).then(execution => {
-  const requestsPerSecond = execution.get('requests_per_second');
-  const executionTime = execution.get('execution_time');
-  const collectionId = execution.get('collection_id');
-  Collection.findById(collectionId).then(collection => {
-    const data = JSON.parse(collection.get('data'));
-    console.log('execution_time', executionTime);
-    console.log('requests_per_second', requestsPerSecond);
-    doRequests(executionTime, requestsPerSecond, data).then((result) => {
-      console.log(util.inspect(result, { showHidden: false, depth: null }));
-      const params = {
-        Message: JSON.stringify(result),
-        TopicArn: AWS_TOPIC_ARN,
-        Subject: executionId.toString(),
-      };
-      sns.publish(params, (err, data) => {
-        if (err) console.log(err, err.stack);
-        else console.log(data);
-      });
+postmanClient.collections.index()
+  .then((response) => {
+    const collections = response.collections.reduce((accumulator, currentValue) => {
+      accumulator.push({ name: currentValue.name, value: currentValue.id });
+      return accumulator;
+    }, []);
+    return inquirer.prompt([{
+      type: 'list',
+      name: 'collectionId',
+      message: 'Select a collection...',
+      choices: collections,
+    }])
+    .then((answers) => postmanClient.collections.show(answers.collectionId))
+    .then((response) => {
+      const endpoints = response.collection.item.reduce((accumulator, currentValue, currentIndex) => {
+        accumulator.push({ name: currentValue.name, value: currentIndex });
+        return accumulator;
+      }, []);
+      return inquirer.prompt([{
+        type: 'list',
+        name: 'index',
+        message: 'Select an endpoint...',
+        choices: endpoints,
+      }])
+      .then((answers) => {
+        const index = answers.index;
+        const endpointData = response.collection.item[index];
+        return inquirer.prompt([{
+          type: 'number',
+          name: 'requestsPerSecond',
+          message: 'How many requests per seconds?',
+        }])
+        .then((answers) => {
+          const requestsPerSecond = answers.requestsPerSecond;
+          return inquirer.prompt([{
+            type: 'number',
+            name: 'executionTime',
+            message: 'For how much time (in seconds)?',
+          }])
+          .then((answers) => {
+            const executionTime = answers.executionTime;
+            return doRequests(executionTime, requestsPerSecond, endpointData)
+              .then((response) => {
+                console.log(response);
+              })
+          })
+        })
+      })
     })
-  });
-});
+  })

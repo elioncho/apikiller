@@ -1,23 +1,23 @@
-# Apimeter Worker
+# Apikiller
+TODO
 
 ## Requirements
 
-- Set database_url .env variable
+- Node
 
-## Building
-
-```bash
-$ bin/setup
+## Setup
+```
+git clone git@github.com:elioncho/apikiller.git
+cd apikiller
+cp .env.example .env
 ```
 
-## Buildig for production
-
-```bash
-$ docker build --target PRODUCTION -t apimeter/worker .
-```
+Set up your Postman Api Key in the .env file.
 
 ## Running
 
-```bash
-$ docker-compose run --rm app <execution_id>
 ```
+node index.js
+```
+
+Follow the instructions prompted at you.
