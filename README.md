@@ -1,5 +1,5 @@
 # Apikiller
-TODO
+Simpe and easy to use load testing tool for your Postman collections.
 
 ## Requirements
 
