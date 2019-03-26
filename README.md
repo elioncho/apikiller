@@ -3,12 +3,13 @@ Simpe and easy to use load testing tool for your Postman collections. Apikiller 
 
 ## Requirements
 
-- Node
+- (Node)[https://nodejs.org/en/]
 
 ## Setup
 ```
 git clone git@github.com:elioncho/apikiller.git
 cd apikiller
+npm install
 cp .env.example .env
 ```
 
