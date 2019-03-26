@@ -3,7 +3,7 @@ Simpe and easy to use load testing tool for your Postman collections. Apikiller 
 
 ## Requirements
 
-- (Node)[https://nodejs.org/en/]
+- [Node](https://nodejs.org/en/)
 
 ## Setup
 ```
@@ -14,6 +14,7 @@ cp .env.example .env
 ```
 
 Set up your Postman Api Key in the .env file.
+For more information on your Postman Api Key, click [here](https://docs.api.getpostman.com/?#intro).
 
 ## Running
 
