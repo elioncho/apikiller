@@ -1,5 +1,5 @@
 # Apikiller
-Simpe and easy to use load testing tool for your Postman collections. Perform a load test on any endpoint. You can configure the load test execution time and the amount of requests per second.
+Simpe and easy to use load testing tool for your Postman collections. Perform a load test on any endpoint. You can configure the load test execution time and amount of requests per second.
 
 ## Requirements
 
