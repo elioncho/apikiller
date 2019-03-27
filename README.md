@@ -19,7 +19,7 @@ For more information on your Postman Api Key, click [here](https://docs.api.getp
 ## Running
 
 ```
-node index.js
+npm start
 ```
 
 Follow the instructions prompted at you.

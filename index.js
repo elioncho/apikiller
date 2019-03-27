@@ -3,6 +3,7 @@ require('dotenv').config();
 const _ = require('lodash');
 const inquirer = require('inquirer');
 const request = require('request');
+const requestPromise = require('request-promise');
 
 const Postman = require('./postman/index');
 
@@ -10,33 +11,54 @@ const { POSTMAN_API_KEY } = process.env;
 
 const postmanClient = Postman(POSTMAN_API_KEY);
 
-function doRequests(executionTime, requestsPerSecond, endpointData) {
-  const result = {
-    executionTime: executionTime,
-    requestsPerSecond: requestsPerSecond,
-    totalNumberOfRequests: executionTime * requestsPerSecond,
-    responses: [],
-    errors: 0
+const EXECUTION_STATES = {
+  sleep: 'sleep',
+  running: 'running',
+  complete: 'complete'
+}
+
+const Result = () => {
+  const responses = [];
+  let errors = 0;
+  const success = (response) => {
+    const savedResponse = _.find(responses, (element) => element.statusCode == response.statusCode);
+    if (_.isEmpty(savedResponse)) {
+      responses.push({
+        statusCode: response.statusCode,
+        numberOfResponses: 1,
+      })
+    } else savedResponse.numberOfResponses += 1;
   };
-  let number_of_intervals = 0;
-  const add = (response, options) => {
-    if (response) {
-      const savedResponse = _.find(result.responses, (element) => { 
-        return element.statusCode == element.statusCode;
-      });
-      if (_.isEmpty(savedResponse)) {
-        result.responses.push({
-          statusCode: response.statusCode,
-          numberOfResponses: 1,
-        })
-      } else {
-        savedResponse.numberOfResponses += 1;
-      }
-    } else {
-      result.errors += 1;
-    }
+  const fail = () => errors += 1;
+  const show = () => ({ responses: responses, errors: errors });
+  return { fail, show, success, };
+};
+
+const Execution = (requestsPerSecond, options, result) => {
+  let state = EXECUTION_STATES.sleep;
+  const requests = [];
+  const isComplete = () => state == EXECUTION_STATES.complete;
+  const complete = () => state = EXECUTION_STATES.complete;
+  const run = () => state = EXECUTION_STATES.running;
+  for (let i = 0; i < requestsPerSecond; i++) {
+    requests.push(
+      requestPromise(options)
+        .then((response) => result.success(response))
+        .catch((error) => result.fail())
+    );
   }
-  const requestParams = (endpointData) => ({
+  const start = (callback) => {
+    run();
+    return Promise.all(requests)
+      .then(() => complete())
+      .then(() => callback());
+  };
+  return { isComplete, start, }
+}
+
+function doRequests(executionTime, requestsPerSecond, endpointData) {
+  const executions = [];
+  const params = {
     url: endpointData.request.url.raw,
     method: endpointData.request.method,
     headers: endpointData.request.header,
@@ -44,36 +66,26 @@ function doRequests(executionTime, requestsPerSecond, endpointData) {
     json: true,
     time: true,
     timeout: 5000,
-  })
-  const start = () => {
-    return new Promise((resolve, reject) => {
-      const requestPromises = [];
-      for (let i = 0; i < requestsPerSecond; i++) {
-        requestPromises.push(
-          new Promise((resolve, reject) => {
-            const options = requestParams(endpointData);
-            request(options, function(error, response, body) {
-              add(response, options);
-              resolve();
-            });
-          })
-        );
-      }
-      Promise.all(requestPromises).then(() => {
-        resolve();
-      });
-    })
-  };
-  return new Promise((resolve, reject) => {
-    const interval = setInterval(() => {
-      start().then(() => {
-        if (++number_of_intervals == executionTime) {
-          clearInterval(interval);
-          resolve(result);
-        }
-      })
-    }, 1000);
-  })
+    resolveWithFullResponse: true,
+    simple: false,
+  }; 
+
+  const result = Result();
+  for (let i = 0; i < executionTime; i++) {
+    const execution = Execution(requestsPerSecond, params, result);
+    executions.push(execution);
+  }
+
+  const isComplete = (element, index, array) => element.isComplete();
+
+  let timeInterval = 0;
+  const interval = setInterval(() => {
+    const execution = executions[timeInterval];
+    execution.start(() => {
+      if (executions.every(isComplete)) return console.log(result.show());
+    });
+    if (++timeInterval == executionTime) clearInterval(interval);
+  }, 1000);
 }
 
 postmanClient.collections.index()
@@ -117,10 +129,7 @@ postmanClient.collections.index()
           }])
           .then((answers) => {
             const executionTime = answers.executionTime;
-            return doRequests(executionTime, requestsPerSecond, endpointData)
-              .then((response) => {
-                console.log(response);
-              })
+            return doRequests(executionTime, requestsPerSecond, endpointData);
           })
         })
       })
