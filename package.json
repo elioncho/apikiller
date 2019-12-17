@@ -20,7 +20,7 @@
   "dependencies": {
     "dotenv": "^6.2.0",
     "inquirer": "^6.2.2",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.13",
     "npm": "^6.5.0",
     "request": "^2.88.0",
     "request-promise": "^4.2.4"
